@@ -43,7 +43,7 @@ export default function Home({ onNavigate }) {
     specialties = [...new Set(doctors.map((d) => d.specialty))].slice(0, 6);
   return (
     <>
-      <section className="overflow-hidden border-b border-brand-100 bg-[#eef6f3]">
+      <section className="home-hero overflow-hidden border-b border-brand-100 bg-[#eef6f3]">
         <div className="mx-auto grid max-w-7xl items-center lg:grid-cols-[1fr_1.08fr]">
           <div className="px-5 py-12 sm:px-8 lg:py-20 lg:pr-12">
             <div className="mb-6 inline-flex items-center gap-2 rounded-full border border-brand-200 bg-white/70 px-4 py-2 text-[11px] font-semibold uppercase tracking-[.15em] text-brand-800">
