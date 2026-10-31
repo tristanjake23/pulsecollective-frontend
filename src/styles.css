@@ -465,3 +465,23 @@ body:has([data-theme-toggle="header"]) .theme-toggle-floating {
     display: none !important;
   }
 }
+@media screen {
+  html[data-theme="dark"] .home-hero {
+    background: #0b1218;
+    border-color: #304451;
+  }
+
+  html[data-theme="dark"] .home-hero h1 {
+    color: #e7eef3;
+  }
+
+  html[data-theme="dark"] .home-hero h1 span {
+    color: #75ddc2;
+  }
+
+  html[data-theme="dark"] .home-hero .bg-white\/70 {
+    background-color: #192934;
+    border-color: #304451;
+    color: #75ddc2;
+  }
+}
