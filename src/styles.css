@@ -1,0 +1,467 @@
+@import "tailwindcss";
+
+@theme {
+  --font-sans: "Segoe UI", Arial, sans-serif;
+  --color-brand-50: #eff8f6;
+  --color-brand-100: #dcefe9;
+  --color-brand-200: #b9dbd0;
+  --color-brand-800: #144a40;
+  --color-brand-950: #0c2d27;
+  --color-brand-500: #228b77;
+  --color-brand-600: #16725f;
+  --color-brand-700: #155c4f;
+  --color-brand-900: #123c35;
+  --animate-enter: enter 350ms ease-out both;
+  @keyframes enter {
+    from {
+      opacity: 0;
+      transform: translateY(8px);
+    }
+    to {
+      opacity: 1;
+      transform: translateY(0);
+    }
+  }
+}
+
+@layer base {
+  button,
+  a,
+  input,
+  select,
+  textarea {
+    @apply focus-visible:outline-2 focus-visible:outline-offset-4 focus-visible:outline-brand-600;
+  }
+  button:not(:disabled),
+  a {
+    @apply transition-all duration-200;
+  }
+  button:disabled {
+    @apply cursor-not-allowed opacity-50;
+  }
+}
+@theme {
+  --animate-chat: chat 220ms ease-out both;
+  @keyframes chat {
+    from {
+      opacity: 0;
+      transform: translateY(14px) scale(0.97);
+    }
+    to {
+      opacity: 1;
+      transform: translateY(0) scale(1);
+    }
+  }
+}
+@media print {
+  @page {
+    size: A4;
+    margin: 14mm;
+  }
+  html,
+  body {
+    background: white !important;
+    height: auto !important;
+    overflow: visible !important;
+  }
+  body:has([data-printable="true"]) > #root {
+    display: none !important;
+  }
+  [data-modal-layer]:not([data-printable="true"]) {
+    display: none !important;
+  }
+  [data-printable="true"] {
+    position: static !important;
+    display: block !important;
+    padding: 0 !important;
+    background: white !important;
+    overflow: visible !important;
+  }
+  [data-printable="true"] [role="dialog"] {
+    max-height: none !important;
+    max-width: none !important;
+    width: 100% !important;
+    overflow: visible !important;
+    box-shadow: none !important;
+    border-radius: 0 !important;
+  }
+  .invoice-document {
+    color: #111827;
+  }
+  table {
+    width: 100% !important;
+    min-width: 0 !important;
+  }
+  thead {
+    display: table-header-group;
+  }
+  tr,
+  .invoice-document > div:last-of-type {
+    break-inside: avoid;
+  }
+  .print-document {
+    display: block !important;
+    position: static !important;
+    padding: 0 !important;
+    overflow: visible !important;
+  }
+}
+
+@keyframes drawer {
+  from {
+    transform: translateX(-100%);
+  }
+  to {
+    transform: translateX(0);
+  }
+}
+@utility animate-drawer {
+  animation: drawer 0.24s cubic-bezier(0.2, 0.8, 0.2, 1) both;
+}
+button,
+a,
+input,
+select,
+textarea {
+  -webkit-tap-highlight-color: transparent;
+}
+button:not(:disabled),
+a {
+  touch-action: manipulation;
+}
+button:disabled {
+  cursor: not-allowed;
+  opacity: 0.55;
+}
+button:not(:disabled):active,
+a[class*="bg-gradient"]:active {
+  transform: translateY(1px);
+}
+:focus-visible {
+  outline: 2px solid #137a69;
+  outline-offset: 4px;
+}
+html {
+  scroll-padding-top: 7rem;
+}
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+    scroll-behavior: auto !important;
+  }
+}
+@custom-variant dark (&:where([data-theme="dark"], [data-theme="dark"] *));
+
+:root {
+  color-scheme: light;
+  --pc-page: #f7fafb;
+  --pc-panel: #ffffff;
+  --pc-soft: #f1f5f9;
+  --pc-border: #dce5eb;
+  --pc-text: #1e293b;
+  --pc-muted: #64748b;
+  --pc-accent: #16725f;
+}
+
+.theme-toggle {
+  display: inline-flex;
+  width: 44px;
+  height: 44px;
+  flex: 0 0 auto;
+  align-items: center;
+  justify-content: center;
+  border: 1px solid var(--pc-border);
+  border-radius: 14px;
+  background: var(--pc-panel);
+  color: var(--pc-accent);
+  box-shadow: 0 2px 8px rgb(0 0 0 / 5%);
+  cursor: pointer;
+}
+
+.theme-toggle:hover {
+  background: var(--pc-soft);
+  border-color: var(--pc-accent);
+}
+
+.theme-toggle-floating {
+  position: fixed;
+  bottom: 20px;
+  left: 20px;
+  z-index: 45;
+  box-shadow: 0 8px 24px rgb(0 0 0 / 18%);
+}
+
+/* Header toggle takes priority over the fallback button. */
+body:has([data-theme-toggle="header"]) .theme-toggle-floating {
+  display: none;
+}
+
+@media screen {
+  html[data-theme="dark"] {
+    color-scheme: dark;
+    --pc-page: #0b1218;
+    --pc-panel: #121e27;
+    --pc-soft: #192934;
+    --pc-border: #304451;
+    --pc-text: #e7eef3;
+    --pc-muted: #a9bac8;
+    --pc-accent: #75ddc2;
+  }
+
+  html[data-theme="dark"],
+  html[data-theme="dark"] body {
+    background-color: var(--pc-page);
+    color: var(--pc-text);
+  }
+
+  /* Page backgrounds, including the existing workspace gradient. */
+  html[data-theme="dark"] :is(
+    .bg-\[\#f7fafb\],
+    .bg-\[\#f4f7fb\],
+    .bg-\[\#eff8f6\],
+    .bg-\[\#edf6f3\],
+    .bg-\[\#edf6f4\],
+    [class*="bg-[radial-gradient("]
+  ) {
+    background: var(--pc-page);
+  }
+
+  /* Headers, cards, dialogs, tables and chatbot panels. */
+  html[data-theme="dark"] :is(
+    .bg-white,
+    .bg-white\/95,
+    .bg-white\/90,
+    .bg-white\/80,
+    .bg-slate-50,
+    .bg-gray-50,
+    .bg-gray-100,
+    .bg-zinc-50
+  ) {
+    background-color: var(--pc-panel);
+  }
+
+  html[data-theme="dark"] :is(
+    .bg-slate-100,
+    .bg-slate-200,
+    .bg-gray-200
+  ) {
+    background-color: var(--pc-soft);
+  }
+
+  html[data-theme="dark"] :is(
+    .text-black,
+    .text-slate-950,
+    .text-slate-900,
+    .text-slate-800,
+    .text-slate-700,
+    .text-gray-950,
+    .text-gray-900,
+    .text-gray-800,
+    .text-gray-700
+  ) {
+    color: var(--pc-text);
+  }
+
+  html[data-theme="dark"] :is(
+    .text-slate-600,
+    .text-slate-500,
+    .text-slate-400,
+    .text-gray-600,
+    .text-gray-500,
+    .text-gray-400
+  ) {
+    color: var(--pc-muted);
+  }
+
+  html[data-theme="dark"] :is(
+    .text-brand-950,
+    .text-brand-900,
+    .text-brand-800,
+    .text-brand-700,
+    .text-brand-600,
+    .text-teal-900,
+    .text-teal-800,
+    .text-teal-700,
+    .text-teal-600
+  ) {
+    color: var(--pc-accent);
+  }
+
+  html[data-theme="dark"] :is(
+    .border-slate-100,
+    .border-slate-200,
+    .border-slate-200\/60,
+    .border-slate-300,
+    .border-gray-100,
+    .border-gray-200,
+    .border-gray-300,
+    .border-brand-100,
+    .border-brand-200
+  ) {
+    border-color: var(--pc-border);
+  }
+
+  html[data-theme="dark"] :is(
+    .divide-slate-100,
+    .divide-slate-200,
+    .divide-gray-200
+  ) > :not(:last-child) {
+    border-color: var(--pc-border);
+  }
+
+  html[data-theme="dark"] :is(
+    .bg-brand-50,
+    .bg-brand-100,
+    .bg-teal-50,
+    .bg-teal-100,
+    .bg-emerald-50,
+    .bg-emerald-100
+  ) {
+    background-color: #15372f;
+  }
+
+  /* Preserve distinct warning, error and information colors. */
+  html[data-theme="dark"] :is(.bg-amber-50, .bg-amber-100) {
+    background-color: #392b17;
+  }
+
+  html[data-theme="dark"] :is(
+    .text-amber-700,
+    .text-amber-800,
+    .text-amber-900,
+    .text-amber-950
+  ) {
+    color: #ffdb96;
+  }
+
+  html[data-theme="dark"] :is(
+    .bg-rose-50,
+    .bg-rose-100,
+    .bg-red-50,
+    .bg-red-100
+  ) {
+    background-color: #3b202b;
+  }
+
+  html[data-theme="dark"] :is(
+    .text-rose-600,
+    .text-rose-700,
+    .text-rose-800,
+    .text-rose-900,
+    .text-red-600,
+    .text-red-700,
+    .text-red-800,
+    .text-red-900
+  ) {
+    color: #ffb0bf;
+  }
+
+  html[data-theme="dark"] :is(.bg-blue-50, .bg-blue-100) {
+    background-color: #172e46;
+  }
+
+  html[data-theme="dark"] :is(
+    .text-blue-700,
+    .text-blue-800,
+    .text-blue-900
+  ) {
+    color: #b2d6ff;
+  }
+
+  html[data-theme="dark"] :is(
+    .bg-violet-50,
+    .bg-violet-100,
+    .bg-purple-50,
+    .bg-purple-100
+  ) {
+    background-color: #2b2343;
+  }
+
+  html[data-theme="dark"] :is(
+    .text-violet-600,
+    .text-violet-700,
+    .text-purple-600,
+    .text-purple-700
+  ) {
+    color: #ceb9ff;
+  }
+
+  html[data-theme="dark"] :is(
+    .text-emerald-700,
+    .text-emerald-800,
+    .text-green-700,
+    .text-green-800
+  ) {
+    color: #93e4b8;
+  }
+
+  /* Native controls, including dates and dropdown menus. */
+  html[data-theme="dark"] :is(
+    input:not([type="checkbox"]):not([type="radio"]):not([type="range"]):not([type="color"]),
+    select,
+    textarea
+  ) {
+    background-color: #101c25;
+    color: var(--pc-text);
+    border-color: var(--pc-border);
+  }
+
+  html[data-theme="dark"] :is(input, textarea)::placeholder {
+    color: #91a4b4;
+    opacity: 1;
+  }
+
+  html[data-theme="dark"] option {
+    background-color: var(--pc-panel);
+    color: var(--pc-text);
+  }
+
+  html[data-theme="dark"] :is(input, select, textarea):focus {
+    border-color: var(--pc-accent);
+  }
+
+  html[data-theme="dark"] :focus-visible {
+    outline-color: var(--pc-accent);
+  }
+
+  html[data-theme="dark"] * {
+    scrollbar-color: #496171 #101a22;
+  }
+
+  html[data-theme="dark"] ::selection {
+    background: #286c5d;
+    color: #ffffff;
+  }
+
+  @media (hover: hover) {
+    html[data-theme="dark"] :is(
+      .hover\:bg-brand-50,
+      .hover\:bg-slate-50,
+      .hover\:bg-slate-100,
+      .hover\:bg-gray-50
+    ):hover {
+      background-color: var(--pc-soft);
+    }
+
+    html[data-theme="dark"] .hover\:text-brand-700:hover {
+      color: var(--pc-accent);
+    }
+  }
+}
+
+/* Documents stay readable on white paper. */
+@media print {
+  html,
+  body {
+    color-scheme: light !important;
+    color: #111827 !important;
+  }
+
+  .theme-toggle {
+    display: none !important;
+  }
+}
