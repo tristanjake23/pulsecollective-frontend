@@ -86,24 +86,77 @@ export default function App() {
     }
   }
 
-  if (auth.status !== "ready") {
+    if (auth.status !== "ready") {
+    const checking = auth.status === "loading";
+
     return (
-      <main className="mx-auto max-w-lg px-6 py-20" aria-busy={auth.status === "loading"}>
-        <h1 className="text-2xl font-semibold">
-          {auth.status === "loading" ? "Checking your session…" : "Unable to check your session"}
-        </h1>
-        {auth.status === "error" && (
-          <>
-            <p role="alert" className="mt-4 text-sm">{auth.error}</p>
-            <button type="button" className="mt-6 rounded-xl bg-teal-700 px-5 py-3 text-white"
-              onClick={() => { void restoreSession().catch(() => {}); }}>
-              Try again
-            </button>
-            <button type="button" className="ml-4 mt-6 underline" onClick={signOut}>
-              Sign out
-            </button>
-          </>
-        )}
+      <main
+        className="flex min-h-screen items-center justify-center bg-[#0b151c] px-6 text-slate-100"
+        aria-busy={checking}
+      >
+        <div className="w-full max-w-sm text-center">
+          <div className="relative mx-auto mb-8 flex h-20 w-20 items-center justify-center">
+            <div
+              aria-hidden="true"
+              className={
+                "absolute inset-0 rounded-full border-2 border-teal-400/15 border-t-teal-300 " +
+                (checking ? "motion-safe:animate-spin" : "")
+              }
+            />
+
+            <span
+              aria-hidden="true"
+              className="flex h-14 w-14 items-center justify-center rounded-full bg-teal-400/10 text-2xl text-teal-300"
+            >
+              ✚
+            </span>
+          </div>
+
+          <p className="text-lg font-semibold tracking-tight text-teal-300">
+            Pulse Collective
+          </p>
+
+          <p className="mt-1 text-[10px] uppercase tracking-[0.25em] text-slate-400">
+            Care, more connected
+          </p>
+
+          <h1
+            role="status"
+            className="mt-8 text-2xl font-semibold tracking-tight"
+          >
+            {checking
+              ? "Getting your workspace ready"
+              : "We couldn’t reconnect"}
+          </h1>
+
+          <p className="mt-3 text-sm leading-6 text-slate-400">
+            {checking
+              ? "Please wait while we securely restore your sign-in."
+              : auth.error || "Please check your connection and try again."}
+          </p>
+
+          {!checking && (
+            <div className="mt-7 flex flex-col gap-3">
+              <button
+                type="button"
+                onClick={() => {
+                  void restoreSession().catch(() => {});
+                }}
+                className="rounded-xl bg-teal-600 px-5 py-3 text-sm font-semibold text-white transition hover:bg-teal-500 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-4 focus-visible:outline-teal-300"
+              >
+                Try again
+              </button>
+
+              <button
+                type="button"
+                onClick={signOut}
+                className="rounded-xl px-5 py-3 text-sm font-medium text-slate-300 transition hover:bg-white/5 focus-visible:outline focus-visible:outline-2 focus-visible:outline-teal-300"
+              >
+                Sign out
+              </button>
+            </div>
+          )}
+        </div>
       </main>
     );
   }
