@@ -32,6 +32,8 @@ export default function TriagePanel() {
   const [busy, setBusy] = useState("");
   const [summary, setSummary] = useState("");
   const [source, setSource] = useState("");
+  const [aiModel, setAiModel] = useState("");
+  const [serverWarning, setServerWarning] = useState("");
   const [questions, setQuestions] = useState([]);
   const [saved, setSaved] = useState(null);
   const [history, setHistory] = useState([]);
@@ -41,7 +43,7 @@ export default function TriagePanel() {
   const screeningInput = useRef(null);
   const symptomInput = useRef(null);
   const selectedDoctor = doctors.find((doctor) => doctor.id === doctorId);
-  const hasWarning = selected.length > 0 || warningPattern.test(symptoms);
+  const hasWarning = Boolean(serverWarning) || selected.length > 0 || warningPattern.test(symptoms);
 
   useEffect(() => {
     let active = true;
@@ -64,7 +66,7 @@ export default function TriagePanel() {
     catch (err) { setHistoryError(err.message); }
   }
   function edited() { setSaved(null); requestKey.current = null; setError(""); }
-  function inputChanged() { edited(); setSummary(""); setQuestions([]); setSource(""); }
+  function inputChanged() { edited(); setSummary(""); setQuestions([]); setSource(""); setAiModel(""); setServerWarning(""); }
   function validate() {
     if (!screened) { setError("Choose any warning signs that apply, or select “None of these.”"); screeningInput.current?.focus(); return false; }
     if (symptoms.trim().length < 5) { setError("Describe your symptoms using at least 5 characters."); symptomInput.current?.focus(); return false; }
@@ -76,16 +78,30 @@ export default function TriagePanel() {
   async function prepare(event, useAI = false) {
     event.preventDefault();
     if (lock.current || !validate()) return;
-    edited(); setSummary(ownSummary()); setQuestions([]); setSource("Your summary");
+    edited(); setSummary(ownSummary()); setQuestions([]); setSource("Your summary"); setAiModel("");
     if (hasWarning || !useAI) return;
     lock.current = true; setBusy("ai");
     try {
       const result = await api("/public/triage", {
         method: "POST", publicRequest: true,
-        body: { symptoms, duration, red_flags: selected, warning_screen_complete: screened, consent: true },
+        body: { symptoms, duration, red_flags: selected, warning_screen_complete: screened,
+          consent: true, pain_score: pain === "" ? null : Number(pain), progression },
       });
       // Independent warning screen always remains visible; AI cannot remove it.
-      if (!result.emergency) { setSummary(result.summary); setQuestions(result.questions || []); setSource("AI summary"); }
+      if (result.emergency) {
+        setServerWarning(result.summary || warningText);
+        setSource("Your summary · warning signs reported");
+      } else {
+        if (typeof result.summary !== "string" || !result.summary.trim() ||
+            !Array.isArray(result.questions) || result.questions.length > 3 ||
+            result.questions.some((question) => typeof question !== "string" || !question.trim())) {
+          throw new Error("The AI response was incomplete.");
+        }
+        setSummary(result.summary);
+        setQuestions(result.questions);
+        setSource(result.provider === "Gemini" ? "Gemini summary" : "AI summary");
+        setAiModel(result.provider === "Gemini" && typeof result.model === "string" ? result.model : "");
+      }
     } catch (err) {
       setError("We could not prepare an AI summary. You can still edit your details below and send them. " + err.message);
     } finally { lock.current = false; setBusy(""); }
@@ -121,7 +137,7 @@ export default function TriagePanel() {
   function clear() {
     setSymptoms(""); setDuration("Today"); setSelected([]); setScreened(false); setPain("");
     setProgression("Not sure"); setDoctorId(""); setCallbackPhone("");
-    setSummary(""); setQuestions([]); setSource(""); edited();
+    setSummary(""); setQuestions([]); setSource(""); setAiModel(""); setServerWarning(""); edited();
   }
   function chooseFlag(key) {
     inputChanged();
@@ -142,7 +158,7 @@ export default function TriagePanel() {
   };
   return (
     <div className="space-y-6">
-      {hasWarning && <div role="alert" className="rounded-2xl border border-rose-200 bg-rose-50 p-5 text-sm font-semibold leading-7 text-rose-900">{warningText}</div>}
+      {hasWarning && <div role="alert" className="rounded-2xl border border-rose-200 bg-rose-50 p-5 text-sm font-semibold leading-7 text-rose-900">{serverWarning || warningText}</div>}
       {profile?.role !== "patient" && <p className="text-sm leading-6 text-slate-600">{hasWarning ? "You can notify the clinic without an account. Do not wait for a portal response in an emergency." : <>No account is needed for emergency guidance or warning-sign alerts. To send other reports, <a href="#login" className="font-semibold text-teal-800 underline underline-offset-4">sign in</a>.</>}</p>}
       <form noValidate onSubmit={(event) => prepare(event, false)} className="space-y-7 rounded-3xl border border-slate-200 bg-white p-5 shadow-sm sm:p-8">
         <fieldset disabled={Boolean(busy)} className="min-w-0 space-y-5">
@@ -176,15 +192,16 @@ export default function TriagePanel() {
           </div>
         </fieldset>
         <div className="space-y-3 border-t border-slate-100 pt-5">
-          {!hasWarning && <p className="text-xs leading-6 text-slate-500">Create AI summary sends your symptom text to Gemini. You can review without AI instead.</p>}
+          {!hasWarning && <p className="text-xs leading-6 text-slate-500">Create Gemini summary sends your symptoms, duration, pain level and progression to Google's Gemini service. Leave out names and contact details. You can review without AI instead.</p>}
           <div className="flex flex-wrap gap-3">
-            {hasWarning ? <button disabled={Boolean(busy)} className={primary}>Review my details <ArrowRight size={17} /></button> : <><button type="button" disabled={Boolean(busy)} className={primary} onClick={(event) => prepare(event, true)}>{busy === "ai" ? "Preparing summary…" : "Create AI summary"}<ArrowRight size={17} /></button><button disabled={Boolean(busy)} className={secondary}>Review without AI</button></>}
+            {hasWarning ? <button disabled={Boolean(busy)} className={primary}>Review my details <ArrowRight size={17} /></button> : <><button type="button" disabled={Boolean(busy)} className={primary} onClick={(event) => prepare(event, true)} aria-busy={busy === "ai"}>{busy === "ai" ? "Gemini is preparing your summary…" : "Create Gemini summary"}<ArrowRight size={17} /></button><button disabled={Boolean(busy)} className={secondary}>Review without AI</button></>}
             <button type="button" disabled={Boolean(busy)} onClick={clear} className="px-3 py-2 text-sm text-slate-500 underline underline-offset-4">Clear form</button>
           </div>
         </div>
         {summary && <section className="space-y-5 border-t border-slate-100 pt-6">
           <h2 className={stepLabel}><span className={stepNumber}>2</span>Check your details</h2>
-          <label className="block text-sm font-medium text-slate-700">Your summary <span className="font-normal text-slate-400">· {source}</span><textarea value={summary} maxLength={4000} disabled={Boolean(busy)} onChange={(event) => { edited(); setSummary(event.target.value); }} className={input + " mt-2 min-h-40"} /></label>
+          <label className="block text-sm font-medium text-slate-700">Your summary <span className="font-normal text-slate-400">· {source}</span><textarea value={summary} maxLength={4000} disabled={Boolean(busy)} onChange={(event) => { edited(); setSummary(event.target.value); setSource("Your edited summary"); setAiModel(""); }} className={input + " mt-2 min-h-40"} /></label>
+          {aiModel && <p className="text-xs text-slate-500">Generated by Gemini · {aiModel}</p>}
           <p className="text-sm text-slate-500">Change anything that does not look right. This is a symptom summary, not a diagnosis.</p>
           {questions.length > 0 && <details className="rounded-xl bg-slate-50 p-4"><summary className="cursor-pointer text-sm font-medium">Details you may want to discuss with your doctor</summary><ul className="mt-3 list-disc space-y-2 pl-5 text-sm leading-6 text-slate-600">{questions.map((question, index) => <li key={index}>{question}</li>)}</ul></details>}
           <div className="space-y-4 border-t border-slate-100 pt-6">
