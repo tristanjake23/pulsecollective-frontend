@@ -171,25 +171,14 @@ export default function Login({ onLogin, onSignup }) {
             <button type="submit" disabled={loading || (needsCaptcha && !captchaToken)} className={primary + " w-full"} aria-busy={loading}>{loading ? "Please wait…" : labels[mode]}<ArrowRight size={17} /></button>
             {codeStep && <><button type="button" onClick={resend} disabled={loading || cooldown > 0 || (Boolean(TURNSTILE_SITE_KEY) && !captchaToken)} className="block w-full text-center text-xs font-semibold text-brand-700">{cooldown ? `Resend code in ${cooldown}s` : "Resend code"}</button><button type="button" disabled={loading} onClick={() => switchMode(verifying ? "signup" : "forgot")} className="block w-full text-center text-xs font-semibold text-slate-500">Use a different email</button></>}
            {mode === "login" && (
-  <>
-    <button
-      type="button"
-      disabled={loading}
-      onClick={() => switchMode("forgot")}
-      className="block w-full text-center text-xs font-semibold text-brand-700"
-    >
-      Forgot password?
-    </button>
-
-    <button
-      type="button"
-      disabled={loading}
-      onClick={() => switchMode("signup")}
-      className="block w-full text-center text-xs font-semibold text-brand-700"
-    >
-      Create account
-    </button>
-  </>
+  <button
+    type="button"
+    disabled={loading}
+    onClick={() => switchMode("forgot")}
+    className="block w-full text-center text-xs font-semibold text-brand-700"
+  >
+    Forgot password?
+  </button>
 )}
           </form>
           <a href="#doctors" className="mt-6 block text-sm font-semibold text-brand-700">Explore the doctor directory →</a>
