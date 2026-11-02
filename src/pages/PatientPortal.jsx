@@ -1,491 +1,225 @@
-import RoleBadge from "../components/RoleBadge.jsx";
-import MyAppointments from "../components/MyAppointments.jsx";
-import { useEffect, useState } from "react";
-import {
-  CheckCircle2,
-  HeartPulse,
-  LogOut,
-  Pencil,
-  Save,
-  Stethoscope,
-} from "lucide-react";
-
+import { useEffect, useRef, useState } from "react";
+import { ArrowRight, ArrowUpRight, Check, ShieldCheck } from "lucide-react";
 import { api } from "../api/client.js";
-import Modal from "../components/Modal.jsx";
-import { Brand, card, input, primary, secondary } from "../components/ui.jsx";
+import { useApi } from "../api/ApiContext.jsx";
+import { input, primary, secondary } from "./ui.jsx";
 
-function normalizeProfile(data = {}) {
-  return {
-    full_name: data.full_name || "",
-    contact_email: data.contact_email || "",
-    sex: data.sex || "",
-    date_of_birth: data.date_of_birth || "",
-    phone: data.phone || "",
-    address: data.address || "",
-  };
-}
+const flags = [
+  ["breathing", "Severe difficulty breathing or choking"],
+  ["chest", "New or severe chest pain or pressure"],
+  ["stroke", "Sudden facial droop, arm weakness or trouble speaking"],
+  ["bleeding", "Heavy bleeding that will not stop"],
+  ["unconscious", "Unconsciousness, ongoing seizure or sudden severe confusion"],
+  ["allergy", "Severe allergic reaction with swelling or breathing difficulty"],
+  ["harm", "Immediate risk of self-harm or harm to another person"],
+];
+const warningText = "Possible emergency warning signs: seek emergency medical help now. Do not wait for an AI summary, clinic acknowledgment or appointment.";
+const warningPattern = /chest pain|pananakit ng dibdib|hindi makahinga|can.?t breathe|unconscious|uncontrolled bleeding|face droop|suicid|kill myself/i;
 
-function localToday() {
-  const date = new Date();
-  const year = date.getFullYear();
-  const month = String(date.getMonth() + 1).padStart(2, "0");
-  const day = String(date.getDate()).padStart(2, "0");
-  return `${year}-${month}-${day}`;
-}
-
-function displayDate(value) {
-  if (!value) return "Not provided";
-
-  return new Date(`${value}T00:00:00`).toLocaleDateString("en-PH", {
-    year: "numeric",
-    month: "long",
-    day: "numeric",
-  });
-}
-
-export default function PatientPortal({ profile, onLogout }) {
-  const [saved, setSaved] = useState(null);
-  const [form, setForm] = useState(normalizeProfile(profile));
-  const [editing, setEditing] = useState(false);
-
-  const [loading, setLoading] = useState(true);
-  const [saving, setSaving] = useState(false);
+export default function TriagePanel() {
+  const { profile } = useApi();
+  const [symptoms, setSymptoms] = useState("");
+  const [duration, setDuration] = useState("Today");
+  const [selected, setSelected] = useState([]);
+  const [screened, setScreened] = useState(false);
+  const [pain, setPain] = useState("");
+  const [progression, setProgression] = useState("Not sure");
+  const [callbackPhone, setCallbackPhone] = useState("");
+  const [doctorId, setDoctorId] = useState("");
+  const [doctors, setDoctors] = useState([]);
+  const [directoryError, setDirectoryError] = useState("");
   const [error, setError] = useState("");
-  const [message, setMessage] = useState("");
-
-  const [confirmLogout, setConfirmLogout] = useState(false);
-  const [loggingOut, setLoggingOut] = useState(false);
-
-  async function loadProfile() {
-    setLoading(true);
-    setError("");
-
-    try {
-      const data = normalizeProfile(await api("/patient/profile"));
-
-      setSaved(data);
-      setForm(data);
-
-      // New accounts can complete their missing contact information.
-      setEditing(
-        !data.full_name || !data.date_of_birth || !data.phone || !data.address,
-      );
-    } catch (error) {
-      setError(error.message || "Unable to load your account details.");
-    } finally {
-      setLoading(false);
-    }
-  }
+  const [busy, setBusy] = useState("");
+  const [summary, setSummary] = useState("");
+  const [source, setSource] = useState("");
+  const [aiModel, setAiModel] = useState("");
+  const [serverWarning, setServerWarning] = useState("");
+  const [questions, setQuestions] = useState([]);
+  const [saved, setSaved] = useState(null);
+  const [history, setHistory] = useState([]);
+  const [historyError, setHistoryError] = useState("");
+  const requestKey = useRef(null);
+  const lock = useRef(false);
+  const screeningInput = useRef(null);
+  const symptomInput = useRef(null);
+  const selectedDoctor = doctors.find((doctor) => doctor.id === doctorId);
+  const hasWarning = Boolean(serverWarning) || selected.length > 0 || warningPattern.test(symptoms);
 
   useEffect(() => {
     let active = true;
-
-    async function initialize() {
-      try {
-        const data = normalizeProfile(await api("/patient/profile"));
-        if (!active) return;
-
-        setSaved(data);
-        setForm(data);
-        setEditing(
-          !data.full_name ||
-            !data.date_of_birth ||
-            !data.phone ||
-            !data.address,
-        );
-      } catch (error) {
-        if (active) {
-          setError(error.message || "Unable to load your account details.");
-        }
-      } finally {
-        if (active) setLoading(false);
-      }
-    }
-
-    initialize();
-
-    return () => {
-      active = false;
-    };
+    api("/public/doctors", { publicRequest: true }).then((rows) => {
+      if (active) { setDoctors(rows); setDirectoryError(""); }
+    }).catch((err) => { if (active) setDirectoryError(err.message); });
+    return () => { active = false; };
   }, []);
-
-  function updateField(key, value) {
-    setForm((current) => ({ ...current, [key]: value }));
-    setMessage("");
-    setError("");
+  useEffect(() => {
+    let active = true;
+    setHistory([]); setHistoryError("");
+    if (profile?.role === "patient") {
+      api("/intake-reports?status=all").then((data) => { if (active) setHistory(data.reports); })
+        .catch((err) => { if (active) setHistoryError(err.message); });
+    }
+    return () => { active = false; };
+  }, [profile?.id, profile?.role]);
+  async function refreshHistory() {
+    try { const data = await api("/intake-reports?status=all"); setHistory(data.reports); setHistoryError(""); }
+    catch (err) { setHistoryError(err.message); }
   }
-
-  function startEditing() {
-    setForm({ ...saved });
-    setError("");
-    setMessage("");
-    setEditing(true);
+  function edited() { setSaved(null); requestKey.current = null; setError(""); }
+  function inputChanged() { edited(); setSummary(""); setQuestions([]); setSource(""); setAiModel(""); setServerWarning(""); }
+  function validate() {
+    if (!screened) { setError("Choose any warning signs that apply, or select “None of these.”"); screeningInput.current?.focus(); return false; }
+    if (symptoms.trim().length < 5) { setError("Describe your symptoms using at least 5 characters."); symptomInput.current?.focus(); return false; }
+    return true;
   }
-
-  function cancelEditing() {
-    setForm({ ...saved });
-    setError("");
-    setMessage("");
-    setEditing(false);
+  function ownSummary() {
+    return [symptoms.trim(), `Duration: ${duration}.`, pain !== "" ? `Pain reported: ${pain}/10.` : "", `Progression: ${progression}.`, selected.length ? "Warning signs reported: " + flags.filter(([key]) => selected.includes(key)).map(([, label]) => label).join("; ") : ""].filter(Boolean).join("\n");
   }
-
-  async function save(event) {
+  async function prepare(event, useAI = false) {
     event.preventDefault();
-    if (saving) return;
-
-    setSaving(true);
-    setError("");
-    setMessage("");
-
+    if (lock.current || !validate()) return;
+    edited(); setSummary(ownSummary()); setQuestions([]); setSource("Your summary"); setAiModel("");
+    if (hasWarning || !useAI) return;
+    lock.current = true; setBusy("ai");
     try {
-      const payload = {
-        full_name: form.full_name.trim(),
-        contact_email: form.contact_email.trim() || null,
-        sex: form.sex || null,
-        date_of_birth: form.date_of_birth || null,
-        phone: form.phone.trim() || null,
-        address: form.address.trim() || null,
-      };
-
-      if (payload.full_name.length < 2) {
-        throw new Error("Please enter your full name.");
-      }
-
-      if (payload.date_of_birth && payload.date_of_birth > localToday()) {
-        throw new Error("Date of birth cannot be in the future.");
-      }
-
-      // Only switch to saved view after the server confirms the update.
-      const response = await api("/patient/profile", {
-        method: "PUT",
-        body: payload,
+      const result = await api("/public/triage", {
+        method: "POST", publicRequest: true,
+        body: { symptoms, duration, red_flags: selected, warning_screen_complete: screened,
+          consent: true, pain_score: pain === "" ? null : Number(pain), progression },
       });
-
-      const updated = normalizeProfile(response);
-
-      setSaved(updated);
-      setForm(updated);
-      setEditing(false);
-      setMessage("Your details have been saved.");
-    } catch (error) {
-      setError(error.message || "Unable to save. Please try again.");
-    } finally {
-      setSaving(false);
-    }
+      // Independent warning screen always remains visible; AI cannot remove it.
+      if (result.emergency) {
+        setServerWarning(result.summary || warningText);
+        setSource("Your summary · warning signs reported");
+      } else {
+        if (typeof result.summary !== "string" || !result.summary.trim() ||
+            !Array.isArray(result.questions) || result.questions.length > 3 ||
+            result.questions.some((question) => typeof question !== "string" || !question.trim())) {
+          throw new Error("The AI response was incomplete.");
+        }
+        setSummary(result.summary);
+        setQuestions(result.questions);
+        setSource(result.provider === "Gemini" ? "Gemini summary" : "AI summary");
+        setAiModel(result.provider === "Gemini" && typeof result.model === "string" ? result.model : "");
+      }
+    } catch (err) {
+      setError("We could not prepare an AI summary. You can still edit your details below and send them. " + err.message);
+    } finally { lock.current = false; setBusy(""); }
   }
-
-  async function signOut() {
-    if (loggingOut) return;
-
-    setLoggingOut(true);
-
+  async function sendReport() {
+    if (lock.current || saved || !validate()) return;
+    const guest = profile?.role !== "patient";
+    if (guest && !hasWarning) return setError("You can notify the clinic without an account when warning signs are reported. Sign in to send other reports.");
+    if (!selectedDoctor) return setError("Choose the clinic doctor who should receive this report.");
+    if (summary.trim().length < 5) return setError("Review or write your symptom summary first.");
+    if (!requestKey.current) requestKey.current = crypto.randomUUID();
+    lock.current = true; setBusy("send"); setError("");
     try {
-      await onLogout();
-    } catch {
-      setError("Unable to finish signing out. Please try again.");
-    } finally {
-      setLoggingOut(false);
-    }
+      const report = await api(guest ? "/intake-reports/guest" : "/intake-reports", {
+        method: "POST", publicRequest: guest,
+        body: { doctor_id: doctorId, request_key: requestKey.current, symptoms, duration,
+          red_flags: selected, warning_screen_complete: screened, summary,
+          pain_score: pain === "" ? null : Number(pain), progression, share_with_clinic: true,
+          ...(guest ? { callback_phone: callbackPhone.trim() || null } : {}) },
+      });
+      setSaved(report);
+      if (!guest) setHistory((rows) => [report, ...rows.filter((row) => row.id !== report.id)]);
+    } catch (err) { setError("Report not confirmed as saved. Your entries are still here; retry without changing them if the connection failed. " + err.message); }
+    finally { lock.current = false; setBusy(""); }
   }
-
-  const displayName = saved?.full_name || profile?.full_name || "Patient";
-
+  async function refreshStatus() {
+    if (!saved || lock.current) return;
+    lock.current = true; setBusy("status");
+    try { setSaved(await api(`/intake-reports/${saved.id}`)); setError(""); }
+    catch (err) { setError("Could not refresh clinic status. " + err.message); }
+    finally { lock.current = false; setBusy(""); }
+  }
+  function clear() {
+    setSymptoms(""); setDuration("Today"); setSelected([]); setScreened(false); setPain("");
+    setProgression("Not sure"); setDoctorId(""); setCallbackPhone("");
+    setSummary(""); setQuestions([]); setSource(""); setAiModel(""); setServerWarning(""); edited();
+  }
+  function chooseFlag(key) {
+    inputChanged();
+    const next = selected.includes(key) ? selected.filter((item) => item !== key) : [...selected, key];
+    setSelected(next);
+    setScreened(next.length > 0);
+  }
+  const stepLabel = "mb-4 flex items-center gap-3 text-lg font-semibold text-slate-900";
+  const stepNumber = "flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-teal-50 text-sm text-teal-800";
+  const warningLabels = {
+    breathing: "Severe trouble breathing or choking",
+    chest: "New or severe chest pain",
+    stroke: "Sudden face droop, arm weakness or trouble speaking",
+    bleeding: "Heavy bleeding that will not stop",
+    unconscious: "Unconscious, ongoing seizure or sudden severe confusion",
+    allergy: "Severe allergic reaction with swelling or breathing trouble",
+    harm: "Immediate risk of hurting yourself or someone else",
+  };
   return (
-    <div className="min-h-screen bg-slate-50 text-slate-800">
-      <header className="border-b border-slate-200 bg-white">
-        <div className="mx-auto flex max-w-6xl flex-wrap items-center justify-between gap-5 p-5">
-          <a href="#home" aria-label="Pulse Collective home">
-            <Brand />
-          </a>
-
-          <div className="flex items-center gap-4">
-            <RoleBadge role="patient" />
-
-            <button
-              type="button"
-              onClick={() => setConfirmLogout(true)}
-              className={secondary}
-            >
-              <LogOut size={16} />
-              Log out
-            </button>
+    <div className="space-y-6">
+      {hasWarning && <div role="alert" className="rounded-2xl border border-rose-200 bg-rose-50 p-5 text-sm font-semibold leading-7 text-rose-900">{serverWarning || warningText}</div>}
+      {profile?.role !== "patient" && <p className="text-sm leading-6 text-slate-600">{hasWarning ? "You can notify the clinic without an account. Do not wait for a portal response in an emergency." : <>No account is needed for emergency guidance or warning-sign alerts. To send other reports, <a href="#login" className="font-semibold text-teal-800 underline underline-offset-4">sign in</a>.</>}</p>}
+      <form noValidate onSubmit={(event) => prepare(event, false)} className="space-y-7 rounded-3xl border border-slate-200 bg-white p-5 shadow-sm sm:p-8">
+        <fieldset disabled={Boolean(busy)} className="min-w-0 space-y-5">
+          <legend className={stepLabel}><span className={stepNumber}>1</span>Tell us what is bothering you</legend>
+          <label className="block text-sm font-medium text-slate-700">What symptoms do you have?
+            <textarea ref={symptomInput} minLength={5} maxLength={2000} value={symptoms} onChange={(event) => { inputChanged(); setSymptoms(event.target.value); }} className={input + " mt-2 min-h-32"} placeholder="Describe what you are feeling and when it started. Leave out names and contact details." />
+          </label>
+          <div className="grid gap-5 sm:grid-cols-2">
+            <label className="block text-sm font-medium text-slate-700">When did this start?
+              <select value={duration} onChange={(event) => { inputChanged(); setDuration(event.target.value); }} className={input + " mt-2"}>
+                <option value="Today">Today</option><option value="1–3 days">1–3 days ago</option><option value="More than 3 days">More than 3 days ago</option><option value="Ongoing">It has been ongoing</option>
+              </select>
+            </label>
+            <label className="block text-sm font-medium text-slate-700">Is it getting better or worse?
+              <select value={progression} onChange={(event) => { inputChanged(); setProgression(event.target.value); }} className={input + " mt-2"}>
+                <option value="Not sure">Not sure</option><option value="Improving">Getting better</option><option value="Unchanged">About the same</option><option value="Worsening">Getting worse</option>
+              </select>
+            </label>
+          </div>
+          <label className="block text-sm font-medium text-slate-700">How much pain are you in? <span className="font-normal text-slate-400">(optional)</span>
+            <select value={pain} onChange={(event) => { inputChanged(); setPain(event.target.value); }} className={input + " mt-2"}>
+              <option value="">Choose a pain level</option>{Array.from({ length: 11 }, (_, value) => <option key={value} value={value}>{value === 0 ? "0 — No pain" : value === 10 ? "10 — Worst pain" : value + " / 10"}</option>)}
+            </select>
+          </label>
+          <div role="group" aria-label="Warning signs" tabIndex={-1} ref={screeningInput} className="rounded-2xl border border-slate-200 bg-slate-50 p-4 outline-none focus-visible:ring-2 focus-visible:ring-teal-500 sm:p-5">
+            <p className="font-semibold text-slate-900">Are any of these happening right now?</p><p className="mt-1 text-sm leading-6 text-slate-500">Select all that apply, or choose None of these.</p>
+            <div className="mt-4 grid gap-2 sm:grid-cols-2">
+              {flags.map(([key]) => <button key={key} type="button" aria-pressed={selected.includes(key)} onClick={() => chooseFlag(key)} className={"flex items-center justify-between gap-3 rounded-xl border px-4 py-3 text-left text-sm leading-6 transition-colors focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-teal-600 " + (selected.includes(key) ? "border-rose-400 bg-rose-50 font-medium text-rose-900" : "border-slate-200 bg-white text-slate-700 hover:border-teal-400")}><span>{warningLabels[key]}</span>{selected.includes(key) && <Check size={18} className="shrink-0" aria-hidden="true" />}</button>)}
+            </div>
+            <button type="button" aria-pressed={screened && selected.length === 0} onClick={() => { inputChanged(); setSelected([]); setScreened(true); }} className={"mt-3 w-full rounded-xl border px-4 py-3 text-sm font-semibold transition-colors focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-teal-600 " + (screened && !selected.length ? "border-teal-600 bg-teal-50 text-teal-900" : "border-slate-200 bg-white text-slate-700 hover:border-teal-400")}>None of these</button>
+          </div>
+        </fieldset>
+        <div className="space-y-3 border-t border-slate-100 pt-5">
+          {!hasWarning && <p className="text-xs leading-6 text-slate-500">Create Gemini summary sends your symptoms, duration, pain level and progression to Google's Gemini service. Leave out names and contact details. You can review without AI instead.</p>}
+          <div className="flex flex-wrap gap-3">
+            {hasWarning ? <button disabled={Boolean(busy)} className={primary}>Review my details <ArrowRight size={17} /></button> : <><button type="button" disabled={Boolean(busy)} className={primary} onClick={(event) => prepare(event, true)} aria-busy={busy === "ai"}>{busy === "ai" ? "Gemini is preparing your summary…" : "Create Gemini summary"}<ArrowRight size={17} /></button><button disabled={Boolean(busy)} className={secondary}>Review without AI</button></>}
+            <button type="button" disabled={Boolean(busy)} onClick={clear} className="px-3 py-2 text-sm text-slate-500 underline underline-offset-4">Clear form</button>
           </div>
         </div>
-      </header>
-
-      <main className="mx-auto max-w-6xl space-y-7 p-5 py-10 sm:p-8">
-        <section className="rounded-3xl bg-gradient-to-r from-brand-900 to-brand-600 p-8 text-white">
-          <HeartPulse size={28} />
-
-          <h1 className="mt-5 break-words text-3xl font-semibold">
-            Welcome, {displayName}.
-          </h1>
-
-          <p className="mt-3 max-w-xl text-sm leading-7 text-white/80">
-            Manage your account details and browse the doctor directory.
-          </p>
-        </section>
-
-        <div className="grid gap-7 lg:grid-cols-[1.4fr_1fr]">
-          <section className={card + " p-6"}>
-            <div className="flex flex-wrap items-start justify-between gap-4">
-              <div>
-                <h2 className="text-xl font-semibold">My contact details</h2>
-
-                <p className="mt-2 text-sm text-slate-500">
-                  {editing
-                    ? "Update your information, then save your changes."
-                    : "Your saved account information."}
-                </p>
-              </div>
-
-              {!loading && saved && !editing && (
-                <button
-                  type="button"
-                  onClick={startEditing}
-                  className={secondary}
-                >
-                  <Pencil size={16} />
-                  Edit details
-                </button>
-              )}
-            </div>
-
-            {message && (
-              <p
-                role="status"
-                className="mt-5 flex items-start gap-2 rounded-xl bg-emerald-50 p-4 text-sm text-emerald-800"
-              >
-                <CheckCircle2 size={18} className="shrink-0" />
-                {message}
-              </p>
-            )}
-
-            {error && (
-              <div
-                role="alert"
-                className="mt-5 rounded-xl bg-rose-50 p-4 text-sm text-rose-800"
-              >
-                <p>{error}</p>
-
-                {!saved && !loading && (
-                  <button
-                    type="button"
-                    onClick={loadProfile}
-                    className="mt-3 font-semibold underline"
-                  >
-                    Retry loading details
-                  </button>
-                )}
-              </div>
-            )}
-
-            {loading ? (
-              <p role="status" className="mt-6 text-sm text-slate-500">
-                Loading your details…
-              </p>
-            ) : saved && editing ? (
-              <form onSubmit={save} className="mt-6 space-y-5">
-                <label className="block text-sm font-medium">
-                  Full name
-                  <input
-                    required
-                    autoComplete="name"
-                    minLength={2}
-                    maxLength={120}
-                    value={form.full_name}
-                    onChange={(event) =>
-                      updateField("full_name", event.target.value)
-                    }
-                    disabled={saving}
-                    className={input + " mt-2"}
-                  />
-                </label>
-
-                <label className="block text-sm font-medium">
-                  Date of birth
-                  <input
-                    type="date"
-                    autoComplete="bday"
-                    max={localToday()}
-                    value={form.date_of_birth}
-                    onChange={(event) =>
-                      updateField("date_of_birth", event.target.value)
-                    }
-                    disabled={saving}
-                    className={input + " mt-2"}
-                  />
-                </label>
-
-                <label className="block text-sm font-medium">
-                  Sex
-                  <select
-                    className={input + " mt-2"}
-                    value={form.sex}
-                    onChange={(e) => updateField("sex", e.target.value)}
-                    disabled={saving}
-                  >
-                    <option value="">Choose</option>
-                    {[
-                      ["female", "Female"],
-                      ["male", "Male"],
-                      ["other", "Other"],
-                      ["prefer_not_to_say", "Prefer not to say"],
-                    ].map(([v, l]) => (
-                      <option key={v} value={v}>
-                        {l}
-                      </option>
-                    ))}
-                  </select>
-                </label>
-                <label className="block text-sm font-medium">
-                  Phone number
-                  <input
-                    type="tel"
-                    autoComplete="tel"
-                    maxLength={30}
-                    value={form.phone}
-                    onChange={(event) =>
-                      updateField("phone", event.target.value)
-                    }
-                    disabled={saving}
-                    className={input + " mt-2"}
-                  />
-                </label>
-
-                <label className="block text-sm font-medium">
-                  Contact email (optional)
-                  <input
-                    type="email"
-                    autoComplete="email"
-                    maxLength={254}
-                    value={form.contact_email}
-                    onChange={(e) =>
-                      updateField("contact_email", e.target.value)
-                    }
-                    disabled={saving}
-                    className={input + " mt-2"}
-                  />
-                </label>
-                <label className="block text-sm font-medium">
-                  Address
-                  <textarea
-                    autoComplete="street-address"
-                    maxLength={500}
-                    value={form.address}
-                    onChange={(event) =>
-                      updateField("address", event.target.value)
-                    }
-                    disabled={saving}
-                    className={input + " mt-2 min-h-24"}
-                  />
-                </label>
-
-                <div className="flex flex-wrap justify-end gap-3">
-                  <button
-                    type="button"
-                    disabled={saving}
-                    onClick={cancelEditing}
-                    className={secondary}
-                  >
-                    Cancel
-                  </button>
-
-                  <button type="submit" disabled={saving} className={primary}>
-                    <Save size={16} />
-                    {saving ? "Saving…" : "Save changes"}
-                  </button>
-                </div>
-              </form>
-            ) : saved ? (
-              <dl className="mt-6 grid gap-5 sm:grid-cols-2">
-                {[
-                  ["Full name", saved.full_name],
-                  ["Date of birth", displayDate(saved.date_of_birth)],
-                  ["Phone number", saved.phone],
-                  ["Contact email", saved.contact_email],
-                  ["Sex", saved.sex?.replaceAll("_", " ")],
-                  ["Address", saved.address],
-                ].map(([label, value]) => (
-                  <div
-                    key={label}
-                    className={
-                      "rounded-2xl border border-slate-100 bg-slate-50 p-4 " +
-                      (label === "Address" ? "sm:col-span-2" : "")
-                    }
-                  >
-                    <dt className="text-xs font-medium text-slate-500">
-                      {label}
-                    </dt>
-
-                    <dd className="mt-2 whitespace-pre-wrap break-words text-sm font-semibold text-slate-800">
-                      {value || "Not provided"}
-                    </dd>
-                  </div>
-                ))}
-              </dl>
-            ) : null}
-          </section>
-
-          <aside className={card + " h-fit p-6"}>
-            <Stethoscope size={30} className="text-brand-700" />
-
-            <h2 className="mt-5 text-xl font-semibold">Find a doctor</h2>
-
-            <p className="mt-3 text-sm leading-7 text-slate-500">
-              Explore published doctor profiles, specialties and clinic
-              information.
-            </p>
-
-            <a href="#doctors" className={primary + " mt-6"}>
-              Browse doctors →
-            </a>
-
-            <a
-              href="#home"
-              className="mt-5 block text-sm font-semibold text-brand-700"
-            >
-              Back to home
-            </a>
-          </aside>
-        </div>
-
-        <MyAppointments />
-        {confirmLogout && (
-          <Modal
-            title="Log out of your account?"
-            onClose={() => {
-              if (!loggingOut) setConfirmLogout(false);
-            }}
-          >
-            <div className="space-y-5 p-6">
-              <p className="text-sm leading-7 text-slate-500">
-                Your saved information will remain available next time.
-              </p>
-
-              <div className="flex justify-end gap-3">
-                <button
-                  type="button"
-                  disabled={loggingOut}
-                  onClick={() => setConfirmLogout(false)}
-                  className={secondary}
-                >
-                  Cancel
-                </button>
-
-                <button
-                  type="button"
-                  disabled={loggingOut}
-                  onClick={signOut}
-                  className={primary}
-                >
-                  {loggingOut ? "Logging out…" : "Log out"}
-                </button>
-              </div>
-            </div>
-          </Modal>
-        )}
-      </main>
+        {summary && <section className="space-y-5 border-t border-slate-100 pt-6">
+          <h2 className={stepLabel}><span className={stepNumber}>2</span>Check your details</h2>
+          <label className="block text-sm font-medium text-slate-700">Your summary <span className="font-normal text-slate-400">· {source}</span><textarea value={summary} maxLength={4000} disabled={Boolean(busy)} onChange={(event) => { edited(); setSummary(event.target.value); setSource("Your edited summary"); setAiModel(""); }} className={input + " mt-2 min-h-40"} /></label>
+          {aiModel && <p className="text-xs text-slate-500">Generated by Gemini · {aiModel}</p>}
+          <p className="text-sm text-slate-500">Change anything that does not look right. This is a symptom summary, not a diagnosis.</p>
+          {questions.length > 0 && <details className="rounded-xl bg-slate-50 p-4"><summary className="cursor-pointer text-sm font-medium">Details you may want to discuss with your doctor</summary><ul className="mt-3 list-disc space-y-2 pl-5 text-sm leading-6 text-slate-600">{questions.map((question, index) => <li key={index}>{question}</li>)}</ul></details>}
+          <div className="space-y-4 border-t border-slate-100 pt-6">
+            <h2 className={stepLabel}><span className={stepNumber}>3</span>Send to your clinic</h2>
+            {profile?.role === "patient" || hasWarning ? <>
+              {directoryError && <p role="alert" className="text-sm text-rose-800">The doctor list could not load. Refresh the page or contact the clinic directly. {directoryError}</p>}
+              <label className="block text-sm font-medium text-slate-700">Who would you like to send this to?<select className={input + " mt-2"} value={doctorId} disabled={Boolean(busy)} onChange={(event) => { edited(); setDoctorId(event.target.value); }}><option value="">Choose a doctor and clinic</option>{doctors.map((doctor) => <option key={doctor.id} value={doctor.id}>{doctor.full_name} · {doctor.clinic_name || "Clinic"}</option>)}</select></label>
+              {profile?.role !== "patient" && <label className="block text-sm font-medium text-slate-700">Callback number <span className="font-normal text-slate-400">(optional)</span><input type="tel" maxLength={30} value={callbackPhone} disabled={Boolean(busy)} onChange={(event) => { edited(); setCallbackPhone(event.target.value); }} className={input + " mt-2"} placeholder="A number the clinic can use to contact you" /></label>}
+              <p className="text-xs leading-6 text-slate-500">{profile?.role === "patient" ? "Sending shares and saves this report, your account name and contact phone" : "Notifying shares and saves this report and any callback number you provide"} with the selected clinic's administrator, staff and assigned doctor. {profile?.role !== "patient" && "No account is required. Without a callback number, the clinic may be unable to contact you."}</p>
+              <button type="button" className={primary} disabled={Boolean(busy) || Boolean(saved)} onClick={sendReport}>{busy === "send" ? "Sending report…" : saved ? "Report saved" : profile?.role === "patient" ? "Send report to clinic" : "Notify the clinic"}<ArrowUpRight size={17} /></button>
+            </> : <div className="space-y-3"><p className="text-sm text-slate-600">Sign in with a patient account to send your report. Signing in clears this unsaved draft.</p><a href="#login" className={primary}>Sign in to send <ArrowUpRight size={17} /></a></div>}
+            {saved && <div role="status" className="space-y-2 rounded-xl bg-teal-50 p-4 text-sm text-teal-900"><p className="font-semibold">Your report has been saved.</p><p>{saved.workflow_status === "new" ? "Waiting for the clinic to acknowledge it." : "Status: " + saved.workflow_status}</p>{saved.acknowledged_at && <p>Acknowledged by {saved.acknowledged_name} · {new Date(saved.acknowledged_at).toLocaleString()}</p>}{saved.reviewed_at && <p>Reviewed by {saved.reviewer_name} · {new Date(saved.reviewed_at).toLocaleString()}</p>}{profile?.role === "patient" ? <button type="button" disabled={Boolean(busy)} onClick={refreshStatus} className={secondary}>Check report status</button> : <p>No staff response is guaranteed. Seek emergency care now; contact the clinic directly to confirm receipt.</p>}</div>}
+          </div>
+        </section>}
+        {error && <p role="alert" className="rounded-xl bg-rose-50 p-4 text-sm leading-7 text-rose-800">{error}</p>}
+        <p className="flex items-start gap-2 border-t border-slate-100 pt-5 text-xs leading-6 text-slate-500"><ShieldCheck size={17} className="mt-1 shrink-0" />For severe, sudden or worsening symptoms, seek medical help. Do not wait for a reply from this form. It cannot rule out an emergency.</p>
+      </form>
+      {profile?.role === "patient" && <section className="space-y-3 rounded-2xl border border-slate-200 bg-white p-5 sm:p-6"><div className="flex flex-wrap items-center justify-between gap-3"><h3 className="font-semibold">Your reports</h3><button type="button" onClick={refreshHistory} className={secondary}>Refresh</button></div>{historyError && <p role="alert" className="text-sm text-rose-800">Could not load your reports: {historyError}</p>}{history.map((report) => <article key={report.id} className="space-y-1 rounded-xl bg-slate-50 p-3 text-sm"><p className="font-semibold">{report.doctor_name} · {report.workflow_status}</p><p className="text-slate-500">{new Date(report.created_at).toLocaleString()}</p>{report.acknowledged_name && <p>Acknowledged by {report.acknowledged_name}</p>}{report.reviewer_name && <p>Reviewed by {report.reviewer_name}</p>}</article>)}</section>}
     </div>
   );
 }
