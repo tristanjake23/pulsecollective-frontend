@@ -10,6 +10,7 @@ import Login from "./Login.jsx";
 import DoctorWorkspace from "./DoctorWorkspace.jsx";
 import { ApiContext } from "./api/ApiContext.jsx";
 import PatientPortal from "./pages/PatientPortal.jsx";
+import { patientServiceError } from "./utils/patient.js";
 import { login, logout, signup, restoreSession, subscribeAuth } from "./api/client.js";
 
 const pages = ["home", "about", "doctors", "triage", "login", "portal", "booking"];
@@ -131,8 +132,8 @@ export default function App() {
 
           <p className="mt-3 text-sm leading-6 text-slate-400">
             {checking
-              ? "Please wait while we securely restore your sign-in."
-              : auth.error || "Please check your connection and try again."}
+              ? "Checking your sign-in. Please wait."
+              : patientServiceError({ message: auth.error })}
           </p>
 
           {!checking && (

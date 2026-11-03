@@ -3,6 +3,7 @@ import { today } from "../utils/format.js";
 import { useApi } from "../api/ApiContext.jsx";
 import { api } from "../api/client.js";
 import * as map from "../api/mappers.js";
+import { birthDateError, phoneError } from "../utils/patient.js";
 const blankPatient = () => ({
   name: "",
   dateOfBirth: "",
@@ -88,6 +89,8 @@ export default function useClinicState() {
     try {
       if (!patientForm.name.trim() || !patientForm.dateOfBirth)
         throw new Error("Full name and date of birth are required.");
+      const invalid = birthDateError(patientForm.dateOfBirth, true) || phoneError(patientForm.phone, true);
+      if (invalid) throw new Error(invalid);
       let record;
       const raw = await api("/patients", {
         method: "POST",

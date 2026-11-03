@@ -1,6 +1,7 @@
 import { today } from "../utils/format.js";
 import { useWorkspace } from "../state/WorkspaceContext.jsx";
 import Modal from "./Modal.jsx";
+import { minimumBirthDate } from "../utils/patient.js";
 
 export default function PatientForm() {
   const {
@@ -53,6 +54,7 @@ export default function PatientForm() {
                 required
                 type="date"
                 max={today()}
+                min={minimumBirthDate()}
                 value={patientForm.dateOfBirth}
                 onChange={(e) => updatePatient("dateOfBirth", e.target.value)}
               />

@@ -50,7 +50,7 @@ export default function Doctors() {
           Find your care team
         </p>
         <h1 className="mt-4 text-4xl font-semibold">
-          A doctor for your next step.
+          Find a doctor
         </h1>
         <p className="mt-4 max-w-xl text-sm leading-7 text-white/75">
           Explore doctor profiles, view consultation fees and request an

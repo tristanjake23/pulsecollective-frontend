@@ -51,15 +51,14 @@ export default function Home({ onNavigate }) {
               Pulse Collective · Connected care
             </div>
             <h1 className="max-w-xl text-5xl font-semibold leading-[1.06] tracking-[-.045em] text-brand-900 sm:text-6xl xl:text-7xl">
-              Care that brings
+              Book a visit
               <br />
-              us{" "}
-              <span className="font-serif italic text-brand-600">closer.</span>
+              with your{" "}
+              <span className="font-serif italic text-brand-600">doctor.</span>
             </h1>
             <p className="mt-7 max-w-lg text-base leading-8 text-slate-600">
-              A clearer path from finding your doctor to planning your next
-              visit. Explore care, request an appointment, and stay connected
-              with your clinic.
+              Browse doctors, check available schedules, and request an
+              appointment with your clinic.
             </p>
             <form
               onSubmit={search}
@@ -267,11 +266,11 @@ export default function Home({ onNavigate }) {
           </p>
         </div>
         <div>
-          <Eyebrow>From discovery to your visit</Eyebrow>
+          <Eyebrow>Appointments</Eyebrow>
           <h2 className="text-3xl font-semibold leading-tight tracking-tight text-brand-900">
-            Your next step,
+            How to book
             <br />
-            made simpler.
+            an appointment
           </h2>
           <ol className="mt-8 space-y-7">
             {[

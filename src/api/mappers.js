@@ -1,5 +1,7 @@
+import { birthDateError } from "../utils/patient.js";
+
 export function age(dob) {
-  if (!dob) return "—";
+  if (!dob || birthDateError(dob)) return "—";
   const birth = new Date(dob + "T00:00:00"),
     now = new Date();
   let value = now.getFullYear() - birth.getFullYear();

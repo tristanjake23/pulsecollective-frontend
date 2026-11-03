@@ -2,6 +2,8 @@ import { useEffect, useRef, useState } from "react";
 import { CreditCard, RefreshCw } from "lucide-react";
 import { api } from "../api/client.js";
 import { card, primary, secondary } from "./ui.jsx";
+import QrPayment from "./QrPayment.jsx";
+import { patientServiceError } from "../utils/patient.js";
 
 const money = (value) => new Intl.NumberFormat("en-PH", {
   style: "currency", currency: "PHP",
@@ -58,7 +60,7 @@ export default function MyInvoices({ accountId }) {
         }
         if (active && id && uuid.test(id)) await status(id);
       } catch (err) {
-        if (active) setError(err.message || "Unable to load your invoices.");
+        if (active) setError(patientServiceError(err));
       } finally {
         if (active) setLoading(false);
       }
@@ -75,7 +77,7 @@ export default function MyInvoices({ accountId }) {
       await load();
       if (attempt?.id) await status(attempt.id);
     } catch (err) {
-      if (mounted.current) setError(err.message);
+      if (mounted.current) setError(patientServiceError(err));
     } finally {
       locked.current = false;
       if (mounted.current) { setBusy(""); setLoading(false); }
@@ -98,7 +100,7 @@ export default function MyInvoices({ accountId }) {
         window.location.assign(checkoutAddress(result.checkout_url));
       }
     } catch (err) {
-      if (mounted.current) setError(err.message);
+      if (mounted.current) setError(patientServiceError(err));
     } finally {
       locked.current = false;
       if (mounted.current) setBusy("");
@@ -106,7 +108,7 @@ export default function MyInvoices({ accountId }) {
   }
 
   return (
-    <section className={card + " p-5 sm:p-7"} aria-labelledby="my-invoices-heading">
+    <section id="my-invoices" className={card + " min-w-0 scroll-mt-5 p-5 sm:p-7"} aria-labelledby="my-invoices-heading">
       <div className="flex flex-wrap items-center justify-between gap-4">
         <div>
           <h2 id="my-invoices-heading" className="flex items-center gap-2 text-xl font-semibold">
@@ -114,14 +116,14 @@ export default function MyInvoices({ accountId }) {
           </h2>
           <p className="mt-2 text-sm text-slate-500">Invoices linked to your patient account.</p>
         </div>
-        <button type="button" className={secondary} disabled={Boolean(busy)} onClick={refresh}>
-          <RefreshCw size={16} /> {busy === "refresh" ? "Checking…" : "Refresh invoices and test status"}
+        <button type="button" className={secondary} disabled={loading || Boolean(busy)} onClick={refresh}>
+          <RefreshCw size={16} /> {busy === "refresh" ? "Checking…" : "Refresh invoices"}
         </button>
       </div>
 
-      <p className="mt-5 rounded-xl border border-amber-200 bg-amber-50 p-4 text-sm leading-6 text-amber-900">
+      {(available || attempt) && <p className="mt-5 rounded-xl border border-amber-200 bg-amber-50 p-4 text-sm leading-6 text-amber-900">
         Test payments only. No real money is collected. A successful test does not settle your clinic invoice or change its balance.
-      </p>
+      </p>}
       {error && <p role="alert" className="mt-4 rounded-xl bg-rose-50 p-4 text-sm text-rose-800">{error}</p>}
       {attempt && (
         <div role="status" className="mt-4 rounded-xl border border-teal-200 bg-teal-50 p-4 text-sm leading-6 text-teal-900">
@@ -141,10 +143,10 @@ export default function MyInvoices({ accountId }) {
         !invoices.length && !error ? <p className="mt-5 text-sm text-slate-500">No invoices are linked to your account yet. Contact the clinic if you expected an invoice.</p> :
         <div className="mt-5 space-y-4">
           {invoices.map(invoice => (
-            <article key={invoice.id} className="rounded-2xl border border-slate-200 p-5">
+            <article key={invoice.id} className="min-w-0 break-words rounded-2xl border border-slate-200 p-4 sm:p-5">
               <div className="flex flex-wrap items-start justify-between gap-3">
                 <div>
-                  <h3 className="font-semibold">Invoice {invoice.invoice_no}</h3>
+                  <h3 className="font-semibold">{invoice.invoice_no || "Invoice"}</h3>
                   <p className="mt-1 text-sm text-slate-500">{invoice.clinic_name}</p>
                   <p className="mt-1 text-xs text-slate-500">Due: {invoice.due_date || "Not specified"}</p>
                 </div>
@@ -155,12 +157,17 @@ export default function MyInvoices({ accountId }) {
                   <div key={label}><dt className="text-slate-500">{label}</dt><dd className="mt-1 font-semibold">{money(value)}</dd></div>
                 ))}
               </dl>
-              {Number(invoice.balance_due) > 0 && invoice.status !== "paid" && (
+              {!available && Number(invoice.balance_due) > 0 && invoice.status !== "paid" && (
+                <div className="mt-5">
+                  <QrPayment invoice={{ ...invoice, number: invoice.invoice_no, balanceDue: invoice.balance_due, paidAmount: invoice.paid_amount }} />
+                  <p className="mt-3 text-xs leading-6 text-slate-500">The clinic will update your balance after verifying your payment.</p>
+                </div>
+              )}
+              {available && Number(invoice.balance_due) > 0 && invoice.status !== "paid" && (
                 <div className="mt-5">
                   <button type="button" className={primary} disabled={!available || Boolean(busy)} onClick={() => start(invoice)}>
                     {busy === invoice.id ? "Opening test checkout…" : "Try PayMongo test checkout"}
                   </button>
-                  {!available && <p className="mt-2 text-xs text-slate-500">Online test checkout has not been enabled by the clinic yet.</p>}
                 </div>
               )}
             </article>

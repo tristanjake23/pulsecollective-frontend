@@ -140,8 +140,8 @@ export default function Login({ onLogin, onSignup }) {
           <img src="/images/hospital-team.jpg" alt="" className="absolute inset-0 h-full w-full object-cover opacity-25" />
           <div className="relative">
             <span className="inline-flex items-center gap-2 rounded-full border border-white/20 bg-white/10 px-4 py-2 text-xs"><HeartPulse size={16} /> Pulse Collective</span>
-            <h1 className="mt-12 max-w-sm text-4xl font-semibold leading-tight tracking-tight sm:text-5xl">Care connects us.<br /><span className="font-serif italic text-teal-200">One place to begin.</span></h1>
-            <p className="mt-6 max-w-sm text-sm leading-7 text-white/75">A shared entrance, with a workspace built around your role. Find care as a patient or manage your clinic day.</p>
+            <h1 className="mt-12 max-w-sm text-4xl font-semibold leading-tight tracking-tight sm:text-5xl">Your clinic account.<br /><span className="font-serif italic text-teal-200">Sign in to continue.</span></h1>
+            <p className="mt-6 max-w-sm text-sm leading-7 text-white/75">Patients can manage appointments and account details. Clinic personnel can access their assigned workspaces.</p>
             <div className="mt-10 space-y-4 border-t border-white/20 pt-7 text-sm">
               <p className="flex gap-3"><UserPlus size={20} /> Patients can create their own account.</p>
               <p className="flex gap-3"><ShieldCheck size={20} /> Administrators, doctors and staff use assigned accounts.</p>

@@ -3,6 +3,8 @@ import { api } from "../api/client.js";
 import { DoctorPortrait, OnlineStatus } from "../components/DoctorCard.jsx";
 import { Brand, input, primary, secondary, card } from "../components/ui.jsx";
 import RoleBadge from "../components/RoleBadge.jsx";
+import { today } from "../utils/format.js";
+import { birthDateError, minimumBirthDate, phoneError, patientServiceError } from "../utils/patient.js";
 export default function BookingPage({ profile }) {
   const params = new URLSearchParams(window.location.hash.split("?")[1] || "");
   const doctorId = params.get("doctor"),
@@ -73,6 +75,13 @@ export default function BookingPage({ profile }) {
     setBusy(true);
     setError("");
     try {
+      if (!doctor || profile?.role !== "patient") throw new Error("Sign in with a patient account to book a visit.");
+      const invalid = birthDateError(details.date_of_birth, true) || phoneError(details.phone, true);
+      if (invalid) throw new Error(invalid);
+      if (!details.first_name.trim() || !details.last_name.trim()) throw new Error("Enter your first and last name.");
+      if (!details.address.trim()) throw new Error("Enter your address.");
+      if (mode === "scheduled" && !slot) throw new Error("Choose an available time.");
+      if (reason.trim().length < 2) throw new Error("Enter a reason for your visit.");
       await api("/patient/profile", {
         method: "PUT",
         body: {
@@ -95,13 +104,13 @@ export default function BookingPage({ profile }) {
             doctor_id: doctor.id,
             mode,
             schedule_id: mode === "scheduled" ? slot : null,
-            reason,
+            reason: reason.trim(),
           },
         },
       );
       setSuccess(result);
     } catch (e) {
-      setError(e.message);
+      setError(patientServiceError(e));
       if (/booked|overlap|conflict|available/i.test(e.message)) {
         try {
           setSlots(
@@ -162,7 +171,7 @@ export default function BookingPage({ profile }) {
                 Request submitted
               </span>
               <h2 className="pt-4 text-3xl font-semibold">
-                Your next step is on its way.
+                Your appointment request was sent.
               </h2>
               <p className="text-sm leading-7 text-slate-500">
                 Your request for {success.doctor_name} is awaiting clinic
@@ -247,9 +256,10 @@ export default function BookingPage({ profile }) {
                         }
                         max={
                           k === "date_of_birth"
-                            ? new Date().toLocaleDateString("en-CA")
+                            ? today()
                             : undefined
                         }
+                        min={k === "date_of_birth" ? minimumBirthDate() : undefined}
                         maxLength={
                           k === "contact_email" ? 254 : k === "phone" ? 30 : 60
                         }

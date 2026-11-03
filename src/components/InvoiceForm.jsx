@@ -89,7 +89,7 @@ export default function InvoiceForm() {
             Total: {peso(Number(invoiceAmount) * Number(invoiceQuantity))}
           </strong>
           <p className="text-xs leading-6 text-slate-500">
-            this invoice is not sent or saved to a server.
+            Save the invoice to add these charges to the patient’s account.
           </p>
           <div className="flex flex-wrap justify-end gap-3 pt-3">
             <button

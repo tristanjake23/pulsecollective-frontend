@@ -14,6 +14,8 @@ import {
 import { api } from "../api/client.js";
 import Modal from "../components/Modal.jsx";
 import { Brand, card, input, primary, secondary } from "../components/ui.jsx";
+import { age } from "../api/mappers.js";
+import { birthDateError, minimumBirthDate, phoneError, patientServiceError } from "../utils/patient.js";
 
 function normalizeProfile(data = {}) {
   return {
@@ -36,6 +38,7 @@ function localToday() {
 
 function displayDate(value) {
   if (!value) return "Not provided";
+  if (birthDateError(value)) return "Please update your date of birth";
 
   return new Date(`${value}T00:00:00`).toLocaleDateString("en-PH", {
     year: "numeric",
@@ -69,10 +72,10 @@ export default function PatientPortal({ profile, onLogout }) {
 
       // New accounts can complete their missing contact information.
       setEditing(
-        !data.full_name || !data.date_of_birth || !data.phone || !data.address,
+        !data.full_name || !data.date_of_birth || birthDateError(data.date_of_birth) || !data.phone || !data.address,
       );
     } catch (error) {
-      setError(error.message || "Unable to load your account details.");
+      setError(patientServiceError(error));
     } finally {
       setLoading(false);
     }
@@ -91,12 +94,13 @@ export default function PatientPortal({ profile, onLogout }) {
         setEditing(
           !data.full_name ||
             !data.date_of_birth ||
+            birthDateError(data.date_of_birth) ||
             !data.phone ||
             !data.address,
         );
       } catch (error) {
         if (active) {
-          setError(error.message || "Unable to load your account details.");
+          setError(patientServiceError(error));
         }
       } finally {
         if (active) setLoading(false);
@@ -152,9 +156,9 @@ export default function PatientPortal({ profile, onLogout }) {
         throw new Error("Please enter your full name.");
       }
 
-      if (payload.date_of_birth && payload.date_of_birth > localToday()) {
-        throw new Error("Date of birth cannot be in the future.");
-      }
+      const invalid = birthDateError(payload.date_of_birth, true) || phoneError(payload.phone, true);
+      if (invalid) throw new Error(invalid);
+      if (!payload.address) throw new Error("Enter your address.");
 
       // Only switch to saved view after the server confirms the update.
       const response = await api("/patient/profile", {
@@ -169,7 +173,7 @@ export default function PatientPortal({ profile, onLogout }) {
       setEditing(false);
       setMessage("Your details have been saved.");
     } catch (error) {
-      setError(error.message || "Unable to save. Please try again.");
+      setError(patientServiceError(error));
     } finally {
       setSaving(false);
     }
@@ -199,7 +203,7 @@ export default function PatientPortal({ profile, onLogout }) {
             <Brand />
           </a>
 
-          <div className="flex items-center gap-4">
+          <div className="flex flex-wrap items-center gap-3">
             <RoleBadge role="patient" />
 
             <button
@@ -215,7 +219,7 @@ export default function PatientPortal({ profile, onLogout }) {
       </header>
 
       <main className="mx-auto max-w-6xl space-y-7 p-5 py-10 sm:p-8">
-        <section className="rounded-3xl bg-gradient-to-r from-brand-900 to-brand-600 p-8 text-white">
+        <section className="rounded-3xl bg-gradient-to-r from-brand-900 to-brand-600 p-5 text-white sm:p-8">
           <HeartPulse size={28} />
 
           <h1 className="mt-5 break-words text-3xl font-semibold">
@@ -223,15 +227,22 @@ export default function PatientPortal({ profile, onLogout }) {
           </h1>
 
           <p className="mt-3 max-w-xl text-sm leading-7 text-white/80">
-            Manage your account details and browse the doctor directory.
+            View your appointments, check invoices, and update your details.
           </p>
         </section>
 
-        <div className="grid gap-7 lg:grid-cols-[1.4fr_1fr]">
-          <section className={card + " p-6"}>
+        <nav aria-label="Patient portal sections" className="grid grid-cols-2 gap-3 sm:grid-cols-4">
+          {[["My appointments", "my-appointments"], ["My invoices", "my-invoices"], ["My details", "my-details"]].map(([label, id]) => (
+            <button key={id} type="button" className={secondary} onClick={() => document.getElementById(id)?.scrollIntoView({ block: "start" })}>{label}</button>
+          ))}
+          <a href="#doctors" className={primary}>Book a visit</a>
+        </nav>
+
+        <div className="grid min-w-0 gap-7 lg:grid-cols-[minmax(0,1.4fr)_minmax(0,1fr)]">
+          <section id="my-details" className={card + " min-w-0 scroll-mt-5 p-5 sm:p-6"}>
             <div className="flex flex-wrap items-start justify-between gap-4">
               <div>
-                <h2 className="text-xl font-semibold">My contact details</h2>
+                <h2 className="text-xl font-semibold">My details</h2>
 
                 <p className="mt-2 text-sm text-slate-500">
                   {editing
@@ -306,9 +317,11 @@ export default function PatientPortal({ profile, onLogout }) {
                 <label className="block text-sm font-medium">
                   Date of birth
                   <input
+                    required
                     type="date"
                     autoComplete="bday"
                     max={localToday()}
+                    min={minimumBirthDate()}
                     value={form.date_of_birth}
                     onChange={(event) =>
                       updateField("date_of_birth", event.target.value)
@@ -342,6 +355,7 @@ export default function PatientPortal({ profile, onLogout }) {
                 <label className="block text-sm font-medium">
                   Phone number
                   <input
+                    required
                     type="tel"
                     autoComplete="tel"
                     maxLength={30}
@@ -367,10 +381,12 @@ export default function PatientPortal({ profile, onLogout }) {
                     disabled={saving}
                     className={input + " mt-2"}
                   />
+                  <span className="mt-2 block text-xs font-normal text-slate-500">Changing this contact email does not change your sign-in email.</span>
                 </label>
                 <label className="block text-sm font-medium">
                   Address
                   <textarea
+                    required
                     autoComplete="street-address"
                     maxLength={500}
                     value={form.address}
@@ -403,6 +419,7 @@ export default function PatientPortal({ profile, onLogout }) {
                 {[
                   ["Full name", saved.full_name],
                   ["Date of birth", displayDate(saved.date_of_birth)],
+                  ["Age", age(saved.date_of_birth) === 0 ? "Under 1 year" : age(saved.date_of_birth)],
                   ["Phone number", saved.phone],
                   ["Contact email", saved.contact_email],
                   ["Sex", saved.sex?.replaceAll("_", " ")],
