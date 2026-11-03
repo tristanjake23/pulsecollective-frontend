@@ -1,6 +1,6 @@
 import { HeartPulse, Users, ClipboardList, ArrowRight } from "lucide-react";
 import { Eyebrow, primary } from "../components/ui.jsx";
-const photo = "/images/hospital-team.jpg";
+const photo = "/images/strato.jpg";
 export default function About() {
   return (
     <div className="mx-auto max-w-7xl px-5 py-14 sm:px-8">
