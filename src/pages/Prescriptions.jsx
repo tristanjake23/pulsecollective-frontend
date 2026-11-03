@@ -126,7 +126,7 @@ export default function Prescriptions() {
             Prescriptions
           </h1>
           <p className="mt-2 text-sm text-slate-500">
-            Compose, review, and print prescription drafts in one place.
+            Create, view, and print prescriptions in one place.
           </p>
         </div>
         <button
@@ -140,7 +140,7 @@ export default function Prescriptions() {
       </div>
       <section className="grid gap-4 sm:grid-cols-3">
         {[
-          [FileHeart, "Draft prescriptions", prescriptions.length],
+          [FileHeart, "Total prescriptions", prescriptions.length],
           [
             Pill,
             "Medication entries",
@@ -148,7 +148,7 @@ export default function Prescriptions() {
           ],
           [
             CheckCircle2,
-            "Patients with drafts",
+            "Patients with prescriptions",
             new Set(prescriptions.map((r) => r.patientId)).size,
           ],
         ].map(([Icon, title, value]) => (
@@ -165,7 +165,7 @@ export default function Prescriptions() {
       </section>
       <section className={card + " overflow-hidden"}>
         <div className="flex flex-wrap items-center justify-between gap-4 border-b border-slate-100 p-6">
-          <h2 className="font-semibold">Prescription drafts</h2>
+          <h2 className="font-semibold">Prescriptions</h2>
           <label className="relative">
             <Search
               size={16}
@@ -248,7 +248,7 @@ export default function Prescriptions() {
             <p className="mt-2 max-w-sm text-sm leading-7 text-slate-500">
               {query
                 ? "Try another patient name or clear your search."
-                : "Create a draft with patient details and medication instructions, then review the printable preview."}
+                : "Create a prescription with patient details and medication instructions, then open the printable preview."}
             </p>
             {!query && (
               <button
@@ -257,14 +257,14 @@ export default function Prescriptions() {
                 className={secondary + " mt-6"}
               >
                 <Plus size={16} />
-                Create first draft
+                Create first prescription
               </button>
             )}
           </div>
         )}
       </section>
       {editing && (
-        <Modal title="New prescription draft" onClose={() => setEditing(false)}>
+        <Modal title="New prescription" onClose={() => setEditing(false)}>
           <form onSubmit={save} className="space-y-5 p-6">
             <p className="rounded-xl bg-violet-50 p-4 text-xs leading-6 text-violet-800">
               Only an authorized clinician may enter medication details. The
@@ -440,7 +440,7 @@ export default function Prescriptions() {
               </button>
               <button disabled={saving} className={primary}>
                 <FileText size={16} />
-                {saving ? "Saving…" : "Save draft & preview"}
+                {saving ? "Saving…" : "Save & preview"}
               </button>
             </div>
           </form>
@@ -457,7 +457,7 @@ export default function Prescriptions() {
               <Brand />
               <div className="mt-5 flex flex-wrap items-start justify-between gap-4">
                 <div>
-                  <h2 className="text-2xl font-semibold">Prescription draft</h2>
+                  <h2 className="text-2xl font-semibold">Prescription</h2>
                 </div>
               </div>
             </div>
