@@ -26,7 +26,7 @@ export default function InvoiceDetails({
             <span className="mb-3 block text-xs font-bold uppercase tracking-[0.18em] text-brand-700">
               PULSE COLLECTIVE · INVOICE
             </span>
-            <h2>{invoice.number || invoice.id}</h2>
+            <h2>{invoice.number || "Invoice"}</h2>
           </div>
           <Badge status={invoice.status}>{invoice.status}</Badge>
         </div>
@@ -35,7 +35,7 @@ export default function InvoiceDetails({
             <small>BILL TO</small>
             <h3>{invoice.patient}</h3>
             <p>
-              {patient?.code || patient?.id}
+              {patient?.code || ""}
               <br />
               {patient?.phone}
               <br />

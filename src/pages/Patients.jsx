@@ -30,7 +30,7 @@ export default function Patients() {
           <SearchBox
             value={query}
             onChange={setQuery}
-            placeholder="Name, patient ID or phone"
+            placeholder="Name, patient code or phone"
           />
         </div>
         <PatientTable
@@ -66,7 +66,7 @@ export default function Patients() {
             {tab === "Details" ? (
               <dl className="grid gap-5 sm:grid-cols-2">
                 {[
-                  ["Patient ID", selected.code],
+                  ["Patient code", selected.code],
                   ["Date of birth", selected.date_of_birth],
                   ["Age", selected.age],
                   ["Sex", selected.sex],
@@ -104,7 +104,12 @@ export default function Patients() {
                         key={x.id}
                         className="rounded-xl border p-4 text-sm"
                       >
-                        <b>{x.number || x.doctor || x.doctor_name || x.id}</b>
+                        <b>
+                          {x.number || x.doctor || x.doctor_name ||
+                            (tab === "Appointments" ? "Appointment" :
+                              tab === "Consultations" ? "Consultation" :
+                                tab === "Prescriptions" ? "Prescription" : "Invoice")}
+                        </b>
                         <p className="mt-2 text-slate-500">
                           {x.starts_at
                             ? new Date(x.starts_at).toLocaleString()

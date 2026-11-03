@@ -60,7 +60,7 @@ export default function QrPayment({ invoice }) {
           )}
 
           <p className="break-all text-sm text-slate-600">
-            Invoice: {invoice.number || invoice.id}
+            Invoice: {invoice.number || "Reference not available"}
           </p>
 
           <div className="rounded-xl bg-slate-50 p-4 text-left text-sm leading-6 text-slate-600">

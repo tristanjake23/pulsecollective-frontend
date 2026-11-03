@@ -28,7 +28,7 @@ export default function InvoiceTable({ invoices, onSelect }) {
                     onSelect(i);
                   }}
                 >
-                  {i.number || i.id}
+                  {i.number || "View invoice"}
                 </button>
               </td>
               <td>{i.patient}</td>

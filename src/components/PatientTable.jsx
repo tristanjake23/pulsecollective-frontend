@@ -6,7 +6,7 @@ export default function PatientTable({ patients, onSelect }) {
         <thead>
           <tr>
             <th>Patient</th>
-            <th>Patient ID</th>
+            <th>Patient code</th>
             <th>Age</th>
             <th>Sex</th>
             <th>Phone</th>
@@ -34,7 +34,7 @@ export default function PatientTable({ patients, onSelect }) {
                   </button>
                 </span>
               </td>
-              <td className="text-slate-500">{p.code || p.id}</td>
+              <td className="text-slate-500">{p.code || "—"}</td>
               <td>{p.age}</td>
               <td>{p.sex || "—"}</td>
               <td>{p.phone}</td>

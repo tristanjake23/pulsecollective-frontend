@@ -36,7 +36,7 @@ export default function InvoiceForm() {
             >
               {patients.map((p) => (
                 <option key={p.id} value={p.id}>
-                  {p.name} · {p.id}
+                  {p.name}{p.code ? ` · ${p.code}` : ""}
                 </option>
               ))}
             </select>

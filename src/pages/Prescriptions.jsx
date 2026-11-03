@@ -113,7 +113,7 @@ export default function Prescriptions() {
     }
   }
   const visible = prescriptions.filter((r) =>
-    `${r.id} ${r.patient} ${r.doctor}`
+    `${r.patient} ${r.doctor} ${r.date}`
       .toLowerCase()
       .includes(query.toLowerCase()),
   );
@@ -176,7 +176,7 @@ export default function Prescriptions() {
               className={input + " max-w-xs py-2.5 pl-10"}
               value={query}
               onChange={(e) => setQuery(e.target.value)}
-              placeholder="Search patient or prescription"
+              placeholder="Search patient, doctor or date"
             />
           </label>
         </div>
@@ -210,7 +210,7 @@ export default function Prescriptions() {
                         onClick={() => setPreview(r)}
                         className="max-w-44 truncate font-semibold text-brand-700 underline-offset-4 hover:underline"
                       >
-                        {r.id}
+                        View prescription
                       </button>
                     </td>
                     <td className="px-5 py-4">{r.patient}</td>
@@ -224,7 +224,7 @@ export default function Prescriptions() {
                     <td className="px-5 py-4">
                       <button
                         onClick={() => setPreview(r)}
-                        aria-label={"View " + r.id}
+                        aria-label={"View prescription for " + r.patient}
                         className="rounded-lg p-2 hover:bg-white"
                       >
                         <ArrowUpRight size={17} />
@@ -263,10 +263,6 @@ export default function Prescriptions() {
           </div>
         )}
       </section>
-      <p className="text-xs leading-6 text-slate-500">
-        Printed prescriptions require the prescribing clinician’s review and
-        signature.
-      </p>
       {editing && (
         <Modal title="New prescription draft" onClose={() => setEditing(false)}>
           <form onSubmit={save} className="space-y-5 p-6">
@@ -462,11 +458,7 @@ export default function Prescriptions() {
               <div className="mt-5 flex flex-wrap items-start justify-between gap-4">
                 <div>
                   <h2 className="text-2xl font-semibold">Prescription draft</h2>
-                  <p className="mt-1 text-xs text-slate-400">{preview.id}</p>
                 </div>
-                <span className="rounded-full bg-amber-50 px-3 py-1 text-xs font-bold text-amber-800">
-                  REQUIRES CLINICIAN SIGNATURE
-                </span>
               </div>
             </div>
             <div className="grid gap-4 text-sm sm:grid-cols-2">
@@ -474,7 +466,7 @@ export default function Prescriptions() {
                 <p className="text-xs text-slate-400">Patient</p>
                 <p className="mt-1 font-semibold">{preview.patient}</p>
                 <p className="mt-1 text-slate-500">
-                  Age: {preview.age} · {preview.patientId}
+                  Age: {preview.age}
                 </p>
               </div>
               <div>
